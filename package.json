@@ -1,6 +1,6 @@
 {
 	"name": "@libsrcdev/gatsby-remark-images-anywhere",
-	"version": "0.1.8",
+	"version": "0.1.0",
 	"description": "Handle images with relative, absolute, remote path for gatsby-transformer-remark.",
 	"keywords": [
 		"gatsby",
