@@ -1,8 +1,4 @@
-**
-!index.js
-!util-download-image.js
-!util-html-to-md.js
-!default-markup.js
-!gatsby-browser.js
-!constants.js
-!relative-protocol-whitelist.js
+src/
+.editorconfig
+*.md
+!README.md

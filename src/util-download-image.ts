@@ -6,13 +6,14 @@ import { SharpResult } from './type'
 export const downloadImage = async ({
   id,
   url,
-  store,
+  getCache,
   getNode,
   touchNode,
   cache,
   createNode,
   createNodeId,
   reporter,
+	dangerouslyBuildImageRequestHttpHeaders
 }) => {
   let imageFileNode
   const mediaDataCacheKey = `gria-${url}`
@@ -27,9 +28,9 @@ export const downloadImage = async ({
         nodeId: fileNodeId,
       })
       imageFileNode = fileNode
-    } 
+    }
   }
-  
+
   if (!imageFileNode) {
     try {
       const imageUrl = process.env.LOW_WIFI_MODE
@@ -37,12 +38,12 @@ export const downloadImage = async ({
         : url
       const fileNode = await createRemoteFileNode({
         url: imageUrl,
-        store,
+        getCache,
         cache,
         createNode,
         createNodeId,
-        reporter,
         parentNodeId: id,
+        httpHeaders: dangerouslyBuildImageRequestHttpHeaders(imageUrl),
       })
 
       if (fileNode) {

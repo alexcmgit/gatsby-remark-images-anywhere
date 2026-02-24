@@ -1,6 +1,6 @@
-import path = require('path')
-import select = require('unist-util-select')
-import slash = require('slash')
+import path from 'path'
+import select from 'unist-util-select'
+import slash from 'slash'
 
 import { RemarkNode, Args, Options } from './type'
 import { downloadImage, processImage } from './util-download-image'
@@ -8,131 +8,144 @@ import { toMdNode } from './util-html-to-md'
 import { defaultMarkup } from './default-markup'
 import { isWhitelisted } from './relative-protocol-whitelist'
 import { SUPPORT_EXTS } from './constants'
+import { createRequestHttpHeaderBuilder } from './custom-http-headers/http-header-trusted-provider'
 
 const addImage = async (
-  {
-    markdownAST: mdast,
-    markdownNode,
-    actions,
-    store,
-    files,
-    getNode,
-    createNodeId,
-    reporter,
-    cache,
-    pathPrefix,
-  }: Args,
-  pluginOptions: Options
+	{
+		markdownAST: mdast,
+		markdownNode,
+		actions,
+		store,
+		files,
+		getNode,
+		getCache,
+		createNodeId,
+		reporter,
+		cache,
+		pathPrefix,
+	}: Args,
+	pluginOptions: Options
 ) => {
-  const {
-    plugins,
-    staticDir = 'static',
-    createMarkup = defaultMarkup,
-    sharpMethod = 'fluid',
+	const {
+		plugins,
+		staticDir = 'static',
+		createMarkup = defaultMarkup,
+		sharpMethod = 'fluid',
 
-    // markup options
-    loading = 'lazy',
-    linkImagesToOriginal = false,
-    showCaptions = false,
-    wrapperStyle = '',
-    backgroundColor = '#fff',
-    tracedSVG = false,
-    blurUp = true,
+		// markup options
+		loading = 'lazy',
+		linkImagesToOriginal = false,
+		showCaptions = false,
+		wrapperStyle = '',
+		backgroundColor = '#fff',
+		tracedSVG = false,
+		blurUp = true,
 
-    ...imageOptions
-  } = pluginOptions
+		// image http request options
+		dangerouslyBuildRequestHttpHeaders,
+		httpHeaderProviders,
 
-  if (['fluid', 'fixed', 'resize'].indexOf(sharpMethod) < 0) {
-    reporter.panic(
-      `'sharpMethod' only accepts 'fluid', 'fixed' or 'resize', got ${sharpMethod} instead.`
-    )
-  }
+		...imageOptions
+	} = pluginOptions
 
-  const { touchNode, createNode } = actions
+	if (['fluid', 'fixed', 'resize'].indexOf(sharpMethod) < 0) {
+		reporter.panic(
+			`'sharpMethod' only accepts 'fluid', 'fixed' or 'resize', got ${sharpMethod} instead.`
+		)
+	}
 
-  // gatsby parent file node of this markdown node
-  const dirPath = getNode(markdownNode.parent).dir
-  const { directory } = store.getState().program
+	const { touchNode, createNode } = actions
 
-  const imgNodes: RemarkNode[] = select.selectAll('image[url]', mdast)
-  const htmlImgNodes: RemarkNode[] = select
-    .selectAll('html, jsx', mdast)
-    .map(node => toMdNode(node))
-    .filter(node => !!node)
+	// gatsby parent file node of this markdown node
+	const dirPath = markdownNode.parent && getNode(markdownNode.parent)?.dir as string
+	const { directory } = store.getState().program
 
-  imgNodes.push(...htmlImgNodes)
-  const processPromises = imgNodes.map(async node => {
-    let url: string = node.url
-    if (!url) return
+	const imgNodes: RemarkNode[] = select.selectAll('image[url]', mdast)
+	const htmlImgNodes: RemarkNode[] = select
+		.selectAll('html, jsx', mdast)
+		.map(node => toMdNode(node))
+		.filter(node => !!node)
 
-    let gImgFileNode
+	imgNodes.push(...htmlImgNodes)
+	const processPromises = imgNodes.map(async node => {
+		let url: string = node.url
+		if (!url) return
 
-    // handle relative protocol domains, i.e from contentful
-    // append these url with https
-    if (isWhitelisted(url)) {
-      url = `https:${url}`
-    }
+		let gImgFileNode
 
-    if (url.startsWith('http')) {
-      // handle remote path
-      gImgFileNode = await downloadImage({
-        id: markdownNode.id,
-        url,
-        store,
-        getNode,
-        touchNode,
-        cache,
-        createNode,
-        createNodeId,
-        reporter,
-      })
-    } else {
-      // handle relative path (./image.png, ../image.png)
-      let filePath: string
-      if (url[0] === '.') filePath = slash(path.join(dirPath, url))
-      // handle path returned from netlifyCMS & friends (/assets/image.png)
-      else filePath = path.join(directory, staticDir, url)
+		// handle relative protocol domains, i.e from contentful
+		// append these url with https
+		if (isWhitelisted(url)) {
+			url = `https:${url}`
+		}
 
-      gImgFileNode = files.find(
-        fileNode => fileNode.absolutePath && fileNode.absolutePath === filePath
-      )
-    }
-    if (!gImgFileNode) return
-    if (!SUPPORT_EXTS.includes(gImgFileNode.extension)) return
+		if (url.startsWith('http')) {
+			// handle remote path
+			gImgFileNode = await downloadImage({
+				id: markdownNode.id,
+				url,
+				getCache,
+				getNode,
+				touchNode,
+				cache,
+				createNode,
+				createNodeId,
+				reporter,
+				dangerouslyBuildImageRequestHttpHeaders: createRequestHttpHeaderBuilder({
+					dangerouslyBuildRequestHttpHeaders,
+					httpHeaderProviders
+				})
+			})
+		} else {
+			let filePath: string
+			if (dirPath && url[0] === '.') {
+				// handle relative path (./image.png, ../image.png)
+				filePath = slash(path.join(dirPath, url))
+			} else {
+				// handle path returned from netlifyCMS & friends (/assets/image.png)
+				filePath = path.join(directory, staticDir, url)
+			}
 
-    const imageResult = await processImage({
-      file: gImgFileNode,
-      reporter,
-      cache,
-      pathPrefix,
-      sharpMethod,
-      imageOptions,
-    })
-    if (!imageResult) return
+			gImgFileNode = files.find(
+				fileNode => fileNode.absolutePath && fileNode.absolutePath === filePath
+			)
+		}
+		if (!gImgFileNode) return
+		if (!SUPPORT_EXTS.includes(gImgFileNode.extension)) return
 
-    // mutate node
-    const data = {
-      title: node.title,
-      alt: node.alt,
-      originSrc: node.url,
-      sharpMethod,
-      ...imageResult,
-    }
-    node.type = 'html'
-    node.value = createMarkup(data, {
-      loading,
-      linkImagesToOriginal,
-      showCaptions,
-      wrapperStyle,
-      backgroundColor,
-      tracedSVG,
-      blurUp,
-    })
+		const imageResult = await processImage({
+			file: gImgFileNode,
+			reporter,
+			cache,
+			pathPrefix,
+			sharpMethod,
+			imageOptions,
+		})
+		if (!imageResult) return
 
-    return null
-  })
+		// mutate node
+		const data = {
+			title: node.title,
+			alt: node.alt,
+			originSrc: node.url,
+			sharpMethod,
+			...imageResult,
+		}
+		node.type = 'html'
+		node.value = createMarkup(data, {
+			loading,
+			linkImagesToOriginal,
+			showCaptions,
+			wrapperStyle,
+			backgroundColor,
+			tracedSVG,
+			blurUp,
+		})
 
-  return Promise.all(processPromises)
+		return null
+	})
+
+	return Promise.all(processPromises)
 }
 
 export = addImage
