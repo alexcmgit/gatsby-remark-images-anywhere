@@ -1,7 +1,7 @@
-import { createRemoteFileNode } from 'gatsby-source-filesystem'
-import sharp from 'gatsby-plugin-sharp'
+import { createRemoteFileNode } from 'gatsby-source-filesystem';
+import sharp from 'gatsby-plugin-sharp';
 
-import { SharpResult } from './type'
+import { SharpResult, SharpMethod } from './type';
 
 export const downloadImage = async ({
   id,
@@ -13,21 +13,21 @@ export const downloadImage = async ({
   createNode,
   createNodeId,
   reporter,
-	dangerouslyBuildImageRequestHttpHeaders
-}) => {
-  let imageFileNode
-  const mediaDataCacheKey = `gria-${url}`
-  const cacheMediaData = await cache.get(mediaDataCacheKey)
+  dangerouslyBuildImageRequestHttpHeaders,
+}: any) => {
+  let imageFileNode;
+  const mediaDataCacheKey = `gria-${url}`;
+  const cacheMediaData = await cache.get(mediaDataCacheKey);
 
   if (cacheMediaData && cacheMediaData.fileNodeId) {
-    const fileNodeId = cacheMediaData.fileNodeId
-    const fileNode = getNode(fileNodeId)
+    const fileNodeId = cacheMediaData.fileNodeId;
+    const fileNode = getNode(fileNodeId);
 
     if (fileNode) {
       touchNode({
         nodeId: fileNodeId,
-      })
-      imageFileNode = fileNode
+      });
+      imageFileNode = fileNode;
     }
   }
 
@@ -35,7 +35,7 @@ export const downloadImage = async ({
     try {
       const imageUrl = process.env.LOW_WIFI_MODE
         ? 'https://placekitten.com/1200/800'
-        : url
+        : url;
       const fileNode = await createRemoteFileNode({
         url: imageUrl,
         getCache,
@@ -44,21 +44,21 @@ export const downloadImage = async ({
         createNodeId,
         parentNodeId: id,
         httpHeaders: dangerouslyBuildImageRequestHttpHeaders(imageUrl),
-      })
+      });
 
       if (fileNode) {
-        imageFileNode = fileNode
+        imageFileNode = fileNode;
         await cache.set(mediaDataCacheKey, {
           fileNodeId: fileNode.id,
-        })
+        });
       }
     } catch (e) {
-      reporter.warn(`failed to download ${url}`)
+      reporter.warn(`failed to download ${url}`);
     }
   }
 
-  return imageFileNode
-}
+  return imageFileNode;
+};
 
 export const processImage = async ({
   file,
@@ -67,17 +67,19 @@ export const processImage = async ({
   pathPrefix,
   sharpMethod,
   imageOptions,
-}): Promise<SharpResult> => {
+}: {
+  sharpMethod: SharpMethod;
+} & { [key: string]: any }): Promise<SharpResult> => {
   const args = {
     pathPrefix,
     ...imageOptions,
-  }
-  const getImage = sharp[sharpMethod]
+  };
+  const getImage = sharp[sharpMethod];
 
   return getImage({
     file,
     args,
     reporter,
     cache,
-  })
-}
+  });
+};

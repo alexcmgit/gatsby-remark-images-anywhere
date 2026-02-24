@@ -1,64 +1,67 @@
-import { Node, NodePluginArgs } from 'gatsby'
+import { Node, NodePluginArgs } from 'gatsby';
 import { FileSystemNode } from 'gatsby-source-filesystem';
 import { HttpRequestHeaderOptions } from './custom-http-headers/http-request-header-options';
 
-type SharpMethod = 'fluid' | 'fixed' | 'resize';
+import type { Literal as RemarkLiteral } from 'mdast';
+export type { Literal as RemarkLiteral } from 'mdast';
 
-export interface RemarkNode {
-	type: string;
-	[key: string]: any;
-}
+export type { Node as RemarkNode } from 'mdast';
+
+export type SharpMethod = 'fluid' | 'fixed' | 'resize';
 
 export interface Args extends NodePluginArgs {
-	markdownAST: RemarkNode;
-	markdownNode: Node;
-	files: FileSystemNode[];
+  markdownAST: RemarkLiteral;
+  markdownNode: Node;
+  files: FileSystemNode[];
 }
 
 export interface SharpResult {
-	aspectRatio: number;
-	src: string;
-	srcSet?: string;
-	srcWebp?: string;
-	srcSetWebp?: string;
-	base64?: string;
-	tracedSVG?: string;
+  aspectRatio: number;
+  src: string;
+  srcSet?: string;
+  srcWebp?: string;
+  srcSetWebp?: string;
+  base64?: string;
+  tracedSVG?: string;
 
-	// fixed, resize
-	width?: number;
-	height?: number;
+  // fixed, resize
+  width?: number;
+  height?: number;
 
-	// fluid
-	presentationHeight?: number;
-	presentationWidth?: number;
-	sizes?: string;
-	originalImg?: string;
+  // fluid
+  presentationHeight?: number;
+  presentationWidth?: number;
+  sizes?: string;
+  originalImg?: string;
 }
 
-
 export interface CreateMarkupArgs extends SharpResult {
-	sharpMethod: SharpMethod;
-	originSrc: string;
-	title?: string;
-	alt?: string;
+  sharpMethod: SharpMethod;
+  originSrc: string;
+  title?: string;
+  alt?: string;
 }
 
 export interface MarkupOptions {
-	loading: 'lazy' | 'eager' | 'auto';
-	linkImagesToOriginal: boolean;
-	showCaptions: boolean;
-	wrapperStyle: string | Function;
-	backgroundColor: string;
-	tracedSVG: boolean | Object;
-	blurUp: boolean;
+  loading: 'lazy' | 'eager' | 'auto';
+  linkImagesToOriginal: boolean;
+  showCaptions: boolean;
+  wrapperStyle: string | Function;
+  backgroundColor: string;
+  tracedSVG: boolean | Object;
+  blurUp: boolean;
 }
 
-export type CreateMarkup = (args: CreateMarkupArgs, options?: MarkupOptions) => string;
+export type CreateMarkup = (
+  args: CreateMarkupArgs,
+  options?: MarkupOptions
+) => string;
 
-export interface Options extends Partial<MarkupOptions>, HttpRequestHeaderOptions {
-	plugins: unknown[];
-	staticDir?: string;
-	createMarkup?: CreateMarkup;
-	sharpMethod: SharpMethod;
-	[key: string]: unknown;
+export interface Options
+  extends Partial<MarkupOptions>, HttpRequestHeaderOptions {
+  plugins: unknown[];
+  staticDir?: string;
+  createMarkup?: CreateMarkup;
+  sharpMethod: SharpMethod;
+  [key: string]: unknown;
 }

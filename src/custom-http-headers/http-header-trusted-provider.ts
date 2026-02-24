@@ -40,5 +40,5 @@ export function createRequestHttpHeaderBuilder({
 		}
 	}
 
-	return (url: string) => undefined
+	return (_: string) => undefined
 }

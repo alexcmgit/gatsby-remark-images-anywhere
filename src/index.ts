@@ -1,151 +1,158 @@
-import path from 'path'
-import select from 'unist-util-select'
-import slash from 'slash'
+import path from 'path';
+import { selectAll } from 'unist-util-select';
+import slash from 'slash';
 
-import { RemarkNode, Args, Options } from './type'
-import { downloadImage, processImage } from './util-download-image'
-import { toMdNode } from './util-html-to-md'
-import { defaultMarkup } from './default-markup'
-import { isWhitelisted } from './relative-protocol-whitelist'
-import { SUPPORT_EXTS } from './constants'
-import { createRequestHttpHeaderBuilder } from './custom-http-headers/http-header-trusted-provider'
+import { RemarkLiteral, Args, Options, RemarkNode } from './type';
+import { downloadImage, processImage } from './util-download-image';
+import { RemarkImageNode, toMdNode } from './util-html-to-md';
+import { defaultMarkup } from './default-markup';
+import { isWhitelisted } from './relative-protocol-whitelist';
+import { SUPPORT_EXTS } from './constants';
+import { createRequestHttpHeaderBuilder } from './custom-http-headers/http-header-trusted-provider';
 
-const addImage = async (
-	{
-		markdownAST: mdast,
-		markdownNode,
-		actions,
-		store,
-		files,
-		getNode,
-		getCache,
-		createNodeId,
-		reporter,
-		cache,
-		pathPrefix,
-	}: Args,
-	pluginOptions: Options
-) => {
-	const {
-		plugins,
-		staticDir = 'static',
-		createMarkup = defaultMarkup,
-		sharpMethod = 'fluid',
+export default async function remarkImagesAnywhere(
+  {
+    markdownAST: mdast,
+    markdownNode,
+    actions,
+    store,
+    files,
+    getNode,
+    getCache,
+    createNodeId,
+    reporter,
+    cache,
+    pathPrefix,
+  }: Args,
+  pluginOptions: Options
+) {
+  const {
+    plugins,
+    staticDir = 'static',
+    createMarkup = defaultMarkup,
+    sharpMethod = 'fluid',
 
-		// markup options
-		loading = 'lazy',
-		linkImagesToOriginal = false,
-		showCaptions = false,
-		wrapperStyle = '',
-		backgroundColor = '#fff',
-		tracedSVG = false,
-		blurUp = true,
+    // markup options
+    loading = 'lazy',
+    linkImagesToOriginal = false,
+    showCaptions = false,
+    wrapperStyle = '',
+    backgroundColor = '#fff',
+    tracedSVG = false,
+    blurUp = true,
 
-		// image http request options
-		dangerouslyBuildRequestHttpHeaders,
-		httpHeaderProviders,
+    // image http request options
+    dangerouslyBuildRequestHttpHeaders,
+    httpHeaderProviders,
 
-		...imageOptions
-	} = pluginOptions
+    ...imageOptions
+  } = pluginOptions;
 
-	if (['fluid', 'fixed', 'resize'].indexOf(sharpMethod) < 0) {
-		reporter.panic(
-			`'sharpMethod' only accepts 'fluid', 'fixed' or 'resize', got ${sharpMethod} instead.`
-		)
-	}
+  if (['fluid', 'fixed', 'resize'].indexOf(sharpMethod) < 0) {
+    reporter.panic(
+      `'sharpMethod' only accepts 'fluid', 'fixed' or 'resize', got ${sharpMethod} instead.`
+    );
+  }
 
-	const { touchNode, createNode } = actions
+  const { touchNode, createNode } = actions;
 
-	// gatsby parent file node of this markdown node
-	const dirPath = markdownNode.parent && getNode(markdownNode.parent)?.dir as string
-	const { directory } = store.getState().program
+  // gatsby parent file node of this markdown node
+  const dirPath =
+    markdownNode.parent && (getNode(markdownNode.parent)?.dir as string);
+  const { directory } = store.getState().program;
 
-	const imgNodes: RemarkNode[] = select.selectAll('image[url]', mdast)
-	const htmlImgNodes: RemarkNode[] = select
-		.selectAll('html, jsx', mdast)
-		.map(node => toMdNode(node))
-		.filter(node => !!node)
+  const imgNodes: RemarkImageNode[] = selectAll('image[url]', mdast).filter(
+    (node): node is RemarkImageNode => 'src' in node
+  );
+  const htmlImgNodes: RemarkImageNode[] = selectAll('html, jsx', mdast)
+    .filter((node: RemarkNode): node is RemarkLiteral => 'value' in node)
+    .map((node: RemarkLiteral, _, __) => toMdNode(node))
+    .filter(
+      (node: RemarkImageNode | null, _, __): node is RemarkImageNode => !!node
+    );
 
-	imgNodes.push(...htmlImgNodes)
-	const processPromises = imgNodes.map(async node => {
-		let url: string = node.url
-		if (!url) return
+  imgNodes.push(...htmlImgNodes);
+  const processPromises = imgNodes.map(async (node) => {
+    if (!node.url) return;
 
-		let gImgFileNode
+    let url = node.url;
 
-		// handle relative protocol domains, i.e from contentful
-		// append these url with https
-		if (isWhitelisted(url)) {
-			url = `https:${url}`
-		}
+    let gImgFileNode;
 
-		if (url.startsWith('http')) {
-			// handle remote path
-			gImgFileNode = await downloadImage({
-				id: markdownNode.id,
-				url,
-				getCache,
-				getNode,
-				touchNode,
-				cache,
-				createNode,
-				createNodeId,
-				reporter,
-				dangerouslyBuildImageRequestHttpHeaders: createRequestHttpHeaderBuilder({
-					dangerouslyBuildRequestHttpHeaders,
-					httpHeaderProviders
-				})
-			})
-		} else {
-			let filePath: string
-			if (dirPath && url[0] === '.') {
-				// handle relative path (./image.png, ../image.png)
-				filePath = slash(path.join(dirPath, url))
-			} else {
-				// handle path returned from netlifyCMS & friends (/assets/image.png)
-				filePath = path.join(directory, staticDir, url)
-			}
+    // handle relative protocol domains, i.e from contentful
+    // append these url with https
+    if (isWhitelisted(url)) {
+      url = `https:${url}`;
+    }
 
-			gImgFileNode = files.find(
-				fileNode => fileNode.absolutePath && fileNode.absolutePath === filePath
-			)
-		}
-		if (!gImgFileNode) return
-		if (!SUPPORT_EXTS.includes(gImgFileNode.extension)) return
+    if (url.startsWith('http')) {
+      // handle remote path
+      gImgFileNode = await downloadImage({
+        id: markdownNode.id,
+        url,
+        getCache,
+        getNode,
+        touchNode,
+        cache,
+        createNode,
+        createNodeId,
+        reporter,
+        dangerouslyBuildImageRequestHttpHeaders: createRequestHttpHeaderBuilder(
+          {
+            dangerouslyBuildRequestHttpHeaders,
+            httpHeaderProviders,
+          }
+        ),
+      });
+    } else {
+      let filePath: string;
+      if (dirPath && url[0] === '.') {
+        // handle relative path (./image.png, ../image.png)
+        filePath = slash(path.join(dirPath, url));
+      } else {
+        // handle path returned from netlifyCMS & friends (/assets/image.png)
+        filePath = path.join(directory, staticDir, url);
+      }
 
-		const imageResult = await processImage({
-			file: gImgFileNode,
-			reporter,
-			cache,
-			pathPrefix,
-			sharpMethod,
-			imageOptions,
-		})
-		if (!imageResult) return
+      gImgFileNode = files.find(
+        (fileNode) =>
+          fileNode.absolutePath && fileNode.absolutePath === filePath
+      );
+    }
+    if (!gImgFileNode) return;
+    if (!SUPPORT_EXTS.includes(gImgFileNode.extension)) return;
 
-		// mutate node
-		const data = {
-			title: node.title,
-			alt: node.alt,
-			originSrc: node.url,
-			sharpMethod,
-			...imageResult,
-		}
-		node.type = 'html'
-		node.value = createMarkup(data, {
-			loading,
-			linkImagesToOriginal,
-			showCaptions,
-			wrapperStyle,
-			backgroundColor,
-			tracedSVG,
-			blurUp,
-		})
+    const imageResult = await processImage({
+      file: gImgFileNode,
+      reporter,
+      cache,
+      pathPrefix,
+      sharpMethod,
+      imageOptions,
+    });
+    if (!imageResult) return;
 
-		return null
-	})
+    // mutate node
+    const data = {
+      title: node.title,
+      alt: node.alt,
+      originSrc: node.url,
+      sharpMethod,
+      ...imageResult,
+    };
+    node.type = 'html';
+    node.value = createMarkup(data, {
+      loading,
+      linkImagesToOriginal,
+      showCaptions,
+      wrapperStyle,
+      backgroundColor,
+      tracedSVG,
+      blurUp,
+    });
 
-	return Promise.all(processPromises)
+    return null;
+  });
+
+  return Promise.all(processPromises);
 }
-
-export = addImage
