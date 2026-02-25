@@ -8,9 +8,7 @@ import { RemarkImageNode, toMdNode } from './util-html-to-md';
 import { defaultMarkup } from './default-markup';
 import { isWhitelisted } from './relative-protocol-whitelist';
 import { SUPPORT_EXTS } from './constants';
-import {
-  buildRequestHttpHeadersWith,
-} from './custom-http-headers/http-header-trusted-provider';
+import { buildRequestHttpHeadersWith } from './custom-http-headers/http-header-trusted-provider';
 import { resolveFullUrl, resolveRelativeUrl } from 'utils';
 
 export default async function remarkImagesAnywhere(
@@ -110,10 +108,10 @@ export default async function remarkImagesAnywhere(
         dangerouslyBuildImageRequestHttpHeaders: buildRequestHttpHeaders,
       });
     } else if (relativeImageUrl) {
-			// ==============================
-			// TODO(@libsrcdev): REFACTOR THIS TO MOUNT MORE FLEXIBLE URLS INSTEAD OF USING [staticDir]
-			// ==============================
-			
+      // ==============================
+      // TODO(@libsrcdev): REFACTOR THIS TO MOUNT MORE FLEXIBLE URLS INSTEAD OF USING [staticDir]
+      // ==============================
+
       let filePath: string;
       if (dirPath && url[0] === '.') {
         // handle relative path (./image.png, ../image.png)
@@ -168,3 +166,14 @@ export default async function remarkImagesAnywhere(
 
   return Promise.all(processPromises);
 }
+
+export * from './constants';
+export * from './custom-http-headers/http-header-trusted-provider';
+export * from './custom-http-headers/http-request-header-options';
+export * from './custom-http-headers/is-trusted-url';
+export * from './default-markup';
+export * from './relative-protocol-whitelist';
+export * from './type';
+export * from './util-download-image';
+export * from './util-html-to-md';
+export * from './utils';
