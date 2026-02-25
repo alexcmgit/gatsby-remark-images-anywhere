@@ -8,7 +8,10 @@ import { RemarkImageNode, toMdNode } from './util-html-to-md';
 import { defaultMarkup } from './default-markup';
 import { isWhitelisted } from './relative-protocol-whitelist';
 import { SUPPORT_EXTS } from './constants';
-import { createRequestHttpHeaderBuilder } from './custom-http-headers/http-header-trusted-provider';
+import {
+  buildRequestHttpHeadersWith,
+} from './custom-http-headers/http-header-trusted-provider';
+import { resolveFullUrl, resolveRelativeUrl } from 'utils';
 
 export default async function remarkImagesAnywhere(
   {
@@ -43,7 +46,7 @@ export default async function remarkImagesAnywhere(
 
     // image http request options
     dangerouslyBuildRequestHttpHeaders,
-    httpHeaderProviders,
+    httpHeaderProviders = [],
 
     ...imageOptions
   } = pluginOptions;
@@ -85,11 +88,18 @@ export default async function remarkImagesAnywhere(
       url = `https:${url}`;
     }
 
-    if (url.startsWith('http')) {
+    const remoteFullImageUrl = resolveFullUrl(url);
+    const relativeImageUrl = resolveRelativeUrl(url);
+
+    if (remoteFullImageUrl) {
+      const buildRequestHttpHeaders =
+        dangerouslyBuildRequestHttpHeaders ??
+        buildRequestHttpHeadersWith(httpHeaderProviders);
+
       // handle remote path
       gImgFileNode = await downloadImage({
         id: markdownNode.id,
-        url,
+        url: new URL(url).protocol,
         getCache,
         getNode,
         touchNode,
@@ -97,14 +107,13 @@ export default async function remarkImagesAnywhere(
         createNode,
         createNodeId,
         reporter,
-        dangerouslyBuildImageRequestHttpHeaders: createRequestHttpHeaderBuilder(
-          {
-            dangerouslyBuildRequestHttpHeaders,
-            httpHeaderProviders,
-          }
-        ),
+        dangerouslyBuildImageRequestHttpHeaders: buildRequestHttpHeaders,
       });
-    } else {
+    } else if (relativeImageUrl) {
+			// ==============================
+			// TODO(@libsrcdev): REFACTOR THIS TO MOUNT MORE FLEXIBLE URLS INSTEAD OF USING [staticDir]
+			// ==============================
+			
       let filePath: string;
       if (dirPath && url[0] === '.') {
         // handle relative path (./image.png, ../image.png)
@@ -118,6 +127,9 @@ export default async function remarkImagesAnywhere(
         (fileNode) =>
           fileNode.absolutePath && fileNode.absolutePath === filePath
       );
+    } else {
+      // We can't handle this URL
+      reporter.warn(`Skipping invalid image URL ${url}`);
     }
     if (!gImgFileNode) return;
     if (!SUPPORT_EXTS.includes(gImgFileNode.extension)) return;

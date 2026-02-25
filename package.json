@@ -35,25 +35,26 @@
 		"prepare": "npm run build"
 	},
 	"dependencies": {
+		"is-relative-url": "^4.1.0",
 		"parse5": "^8.0.0",
 		"slash": "^3.0.0",
 		"unist-util-select": "^5.1.0"
 	},
 	"devDependencies": {
 		"@swc/core": "^1.15.3",
+		"@types/fs-extra": "^8.0.0",
 		"@types/mdast": "^4.0.4",
 		"eslint": "^9.39.1",
 		"gatsby": "^5.15.0",
+		"gatsby-plugin-sharp": "^5.10.0",
+		"gatsby-source-filesystem": "^5.10.0",
 		"husky": "^9.1.7",
 		"mdast": "^2.3.2",
 		"nodemon": "^3.1.11",
+		"tap": "^14.9.2",
 		"tsdown": "^0.16.6",
 		"tslib": "^2.8.1",
-		"typescript": "^5.9.3",
-		"@types/fs-extra": "^8.0.0",
-		"gatsby-plugin-sharp": "^5.10.0",
-		"gatsby-source-filesystem": "^5.10.0",
-		"tap": "^14.9.2"
+		"typescript": "^5.9.3"
 	},
 	"typings": "dist/index.d.ts",
 	"prettier": {
