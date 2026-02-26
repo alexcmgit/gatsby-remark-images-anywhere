@@ -179,7 +179,7 @@ export default async function remarkImagesAnywhere(
     return null;
   });
 
-  return Promise.all(processPromises);
+  return await Promise.all(processPromises);
 }
 
 export * from './constants';
