@@ -10,6 +10,16 @@ import { isWhitelisted } from './relative-protocol-whitelist';
 import { SUPPORT_EXTS } from './constants';
 import { buildRequestHttpHeadersWith } from './custom-http-headers/http-header-trusted-provider';
 import { resolveFullUrl, resolveRelativeUrl } from 'utils';
+import { Reporter } from 'gatsby';
+
+let localReporter: Reporter;
+
+// TODO: Move to a helper library maybe @libsrcdev/js-tools?
+// function debug(obj: any) {
+//   localReporter.warn(
+//     `[gatsby-remark-images-anywhere]: ${JSON.stringify(replaceNullish(obj), null, 2)}`
+//   );
+// }
 
 export default async function remarkImagesAnywhere(
   {
@@ -27,6 +37,8 @@ export default async function remarkImagesAnywhere(
   }: Args,
   pluginOptions: Options
 ) {
+  localReporter = reporter;
+
   const {
     plugins,
     staticDir = 'static',
@@ -73,7 +85,10 @@ export default async function remarkImagesAnywhere(
     );
 
   imgNodes.push(...htmlImgNodes);
-  const processPromises = imgNodes.map(async (node) => {
+
+  const allImgNodes = [...imgNodes, ...htmlImgNodes];
+
+  const processPromises = allImgNodes.map(async (node) => {
     if (!node.url) return;
 
     let url = node.url;
@@ -97,7 +112,7 @@ export default async function remarkImagesAnywhere(
       // handle remote path
       gImgFileNode = await downloadImage({
         id: markdownNode.id,
-        url: new URL(url).protocol,
+        url: remoteFullImageUrl,
         getCache,
         getNode,
         touchNode,

@@ -32,7 +32,7 @@ export const toMdNode = (node: RemarkLiteral): RemarkImageNode | null => {
       : {};
 
   // no src? don't touch it
-  if ('src'! in attrs) return null;
+  if (!('src' in attrs)) return null
 
   // store origin info & mutate node
   const original = { ...node };
@@ -44,8 +44,9 @@ export const toMdNode = (node: RemarkLiteral): RemarkImageNode | null => {
   remarkImageNode.url = attrs.src;
   remarkImageNode.title = attrs.title;
   remarkImageNode.alt = attrs.alt;
-  remarkImageNode.data = {};
-  remarkImageNode.data.original = original;
+  remarkImageNode.data = {
+    original
+  };
 
   return remarkImageNode;
 };

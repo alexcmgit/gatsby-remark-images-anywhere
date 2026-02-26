@@ -53,7 +53,7 @@ export const downloadImage = async ({
         });
       }
     } catch (e) {
-      reporter.warn(`failed to download ${url}`);
+      reporter.warn(`failed to download ${url} Error: ${e}`);
     }
   }
 
