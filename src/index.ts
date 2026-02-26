@@ -88,6 +88,8 @@ export default async function remarkImagesAnywhere(
 
   const allImgNodes = [...imgNodes, ...htmlImgNodes];
 
+  reporter.info(`[gria] Processing ${allImgNodes.length} image(s) (${imgNodes.length} markdown, ${htmlImgNodes.length} html) using sharpMethod="${sharpMethod}"`);
+
   const processPromises = allImgNodes.map(async (node) => {
     if (!node.url) return;
 
@@ -98,6 +100,7 @@ export default async function remarkImagesAnywhere(
     // handle relative protocol domains, i.e from contentful
     // append these url with https
     if (isWhitelisted(url)) {
+      reporter.verbose(`[gria] Whitelisted protocol-relative URL, prepending https: ${url}`);
       url = `https:${url}`;
     }
 
@@ -105,6 +108,7 @@ export default async function remarkImagesAnywhere(
     const relativeImageUrl = resolveRelativeUrl(url);
 
     if (remoteFullImageUrl) {
+      reporter.verbose(`[gria] Downloading remote image: ${remoteFullImageUrl}`);
       const buildRequestHttpHeaders =
         dangerouslyBuildRequestHttpHeaders ??
         buildRequestHttpHeadersWith(httpHeaderProviders);
@@ -136,16 +140,24 @@ export default async function remarkImagesAnywhere(
         filePath = path.join(directory, staticDir, url);
       }
 
+      reporter.verbose(`[gria] Resolving local image: ${url} -> ${filePath}`);
+
       gImgFileNode = files.find(
         (fileNode) =>
           fileNode.absolutePath && fileNode.absolutePath === filePath
       );
     } else {
       // We can't handle this URL
-      reporter.warn(`Skipping invalid image URL ${url}`);
+      reporter.warn(`[gria] Skipping unrecognized image URL: ${url}`);
     }
-    if (!gImgFileNode) return;
-    if (!SUPPORT_EXTS.includes(gImgFileNode.extension)) return;
+    if (!gImgFileNode) {
+      reporter.verbose(`[gria] No file node found for: ${url}`);
+      return;
+    }
+    if (!SUPPORT_EXTS.includes(gImgFileNode.extension)) {
+      reporter.verbose(`[gria] Unsupported extension "${gImgFileNode.extension}" for: ${url}`);
+      return;
+    }
 
     const imageResult = await processImage({
       file: gImgFileNode,
@@ -155,7 +167,12 @@ export default async function remarkImagesAnywhere(
       sharpMethod,
       imageOptions,
     });
-    if (!imageResult) return;
+    if (!imageResult) {
+      reporter.warn(`[gria] Sharp processing returned no result for: ${url}`);
+      return;
+    }
+
+    reporter.verbose(`[gria] Successfully processed image: ${url}`);
 
     // mutate node
     const data = {

@@ -27,6 +27,7 @@ export const downloadImage = async ({
       touchNode({
         nodeId: fileNodeId,
       });
+      reporter.verbose(`[gria] Using cached image for: ${url}`);
       imageFileNode = fileNode;
     }
   }
@@ -48,12 +49,13 @@ export const downloadImage = async ({
 
       if (fileNode) {
         imageFileNode = fileNode;
+        reporter.verbose(`[gria] Downloaded and cached remote image: ${url}`);
         await cache.set(mediaDataCacheKey, {
           fileNodeId: fileNode.id,
         });
       }
     } catch (e) {
-      reporter.warn(`failed to download ${url} Error: ${e}`);
+      reporter.warn(`[gria] Failed to download ${url}: ${e}`);
     }
   }
 
